@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Emoji Alchemy: Mega Edition</title>
+    <style>
+        :root { --bg: #050505; --accent: #00f2ff; --panel: rgba(20, 20, 20, 0.95); }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        #star-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; }
+        #header { z-index: 10; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
+        #board { flex-grow: 1; position: relative; z-index: 5; overflow: hidden; touch-action: none; }
+        #inventory-container { z-index: 10; height: 35vh; background: var(--panel); border-top: 1px solid #444; display: flex; flex-direction: column; }
+        #inventory { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; overflow-y: auto; justify-content: center; }
+        .emoji { font-size: 2.5rem; cursor: grab; display: flex; flex-direction: column; align-items: center; width: 70px; user-select: none; }
+        .emoji-label { font-size: 0.6rem; color: #888; margin-top: 4px; text-align: center; pointer-events: none; }
+        .on-board { position: absolute; z-index: 50; transition: transform 0.05s linear; }
+        #progress-bar { flex-grow: 1; height: 6px; background: #222; margin: 0 20px; border-radius: 3px; overflow: hidden; position: relative; }
+        #progress-bar-inner { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; box-shadow: 0 0 10px var(--accent); }
+        button { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.8rem; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; border-radius: 20px; width: 60%; margin: 10px auto; display: block; outline: none; }
+    </style>
+</head>
+<body>
+
+<canvas id="star-canvas"></canvas>
+
+<div id="header">
+    <div style="min-width: 120px;">
+        <div style="font-size: 0.9rem; font-weight: bold; letter-spacing: 2px;">ALCHEMY</div>
+        <div id="stats" style="font-size: 0.7rem; color: #888;">
+            <span id="found-count">0</span> / <span id="total-count">126</span>
+        </div>
+    </div>
+    <div id="progress-bar"><div id="progress-bar-inner"></div></div>
+    <button onclick="clearBoard()">CLEAR</button>
+</div>
+
+<div id="board"></div>
+
+<div id="inventory-container">
+    <input type="text" id="search" placeholder="Search items..." oninput="filterInventory()">
+    <div id="inventory"></div>
+</div>
+
+<script>
+ const recipes = {
+        // --- TIER 1-6: ELEMENTAL ORIGINS (15) ---
+        "🔥+🌍": { result: "🌋", name: "Volcano" },
+        "💧+🔥": { result: "💨", name: "Steam" },
+        "🌍+💧": { result: "💩", name: "Mud" },
+        "💨+🔥": { result: "⚡", name: "Energy" },
+        "💨+💧": { result: "🌧️", name: "Rain" },
+        "🌧️+🌍": { result: "🌱", name: "Plant" },
+        "🔥+🔥": { result: "☀️", name: "Sun" },
+        "🌍+🌍": { result: "🏔️", name: "Mountain" },
+        "💨+💨": { result: "🌬️", name: "Wind" },
+        "🌋+💧": { result: "🪨", name: "Stone" },
+        "🪨+🔥": { result: "⛓️", name: "Metal" },
+        "🪨+💨": { result: "🏖️", name: "Sand" },
+        "🏖️+🔥": { result: "🔮", name: "Glass" },
+        "🌱+☀️": { result: "🌻", name: "Flower" },
+        "🌱+💧": { result: "🌿", name: "Herb" },
+
+        // --- TIER 7-12: INDUSTRIAL AGE (15) ---
+        "🌱+🌍": { result: "🌳", name: "Tree" },
+        "🌳+🔥": { result: "🪵", name: "Wood" },
+        "🪨+🪨": { result: "🧱", name: "Brick" },
+        "🧱+🧱": { result: "🏠", name: "House" },
+        "🏠+🏠": { result: "🏘️", name: "Village" },
+        "🏘️+🏘️": { result: "🏙️", name: "City" },
+        "⛓️+🪵": { result: "🔨", name: "Hammer" },
+        "⚡+🔮": { result: "💡", name: "Lightbulb" },
+        "⛓️+⚡": { result: "🔋", name: "Battery" },
+        "🪵+🪨": { result: "📏", name: "Ruler" },
+        "🌱+🌧️": { result: "📄", name: "Paper" },
+        "🪨+🔨": { result: "✍️", name: "Writing" },
+        "⛓️+⛓️": { result: "⚙️", name: "Gear" },
+        "⚙️+⚡": { result: "🚂", name: "Engine" },
+        "🚂+⛓️": { result: "🚜", name: "Machine" },
+
+        // --- TIER 13-18: BIOLOGY & LIFE (15) ---
+        "⚡+💧": { result: "🧪", name: "Life" },
+        "🧪+🌍": { result: "🐛", name: "Bug" },
+        "🧪+💧": { result: "🐟", name: "Fish" },
+        "🐛+🌱": { result: "🦋", name: "Butterfly" },
+        "🐟+🌍": { result: "🦎", name: "Reptile" },
+        "🦎+🔥": { result: "🐉", name: "Dragon" },
+        "🧪+🧠": { result: "🧬", name: "DNA" },
+        "🧬+🌍": { result: "🐒", name: "Monkey" },
+        "🐒+🧠": { result: "👨", name: "Human" },
+        "👨+🔨": { result: "👷", name: "Worker" },
+        "👨+✍️": { result: "🧑‍🏫", name: "Scholar" },
+        "👨+🧪": { result: "🧛", name: "Vampire" },
+        "👨+🦴": { result: "💀", name: "Skeleton" },
+        "💀+🧪": { result: "🧟", name: "Zombie" },
+        "👨+🎨": { result: "🖼️", name: "Art" },
+
+        // --- TIER 19-24: COMPUTER AGE (15) ---
+        "🔋+⚙️": { result: "📟", name: "Transistor" },
+        "📟+📟": { result: "💾", name: "Microchip" },
+        "💾+💡": { result: "🖥️", name: "Monitor" },
+        "🖥️+✍️": { result: "⌨️", name: "Keyboard" },
+        "🖥️+⌨️": { result: "💻", name: "Computer" },
+        "💻+⚡": { result: "🌐", name: "Internet" },
+        "🌐+🧠": { result: "🤖", name: "AI" },
+        "🤖+💻": { result: "🦾", name: "Cyborg" },
+        "💻+🎮": { result: "🕹️", name: "Joystick" },
+        "🕹️+💻": { result: "🎮", name: "Video Game" },
+        "🌐+👨": { result: "📧", name: "Email" },
+        "🌐+🖼️": { result: "📸", name: "Social Media" },
+        "💻+⛓️": { result: "⛏️", name: "Bitcoin" },
+        "🤖+⚙️": { result: "🏭", name: "Automation" },
+        "🤖+👨": { result: "🤝", name: "Future" },
+
+        // --- TIER 25-30: SPACE EXPLORATION (15) ---
+        "☀️+☀️": { result: "🌟", name: "Star" },
+        "🌟+🌟": { result: "🌌", name: "Galaxy" },
+        "🌟+🪨": { result: "🕳️", name: "Black Hole" },
+        "🕳️+🌍": { result: "⏳", name: "Time" },
+        "🚂+🚀": { result: "🚀", name: "Rocket" },
+        "🚀+🌍": { result: "🛰️", name: "Satellite" },
+        "🛰️+🌐": { result: "📡", name: "Comms" },
+        "🚀+☀️": { result: "☄️", name: "Comet" },
+        "🚀+⚡": { result: "🛸", name: "UFO" },
+        "🛸+⏳": { result: "⌛", name: "Wormhole" },
+        "⌛+🌌": { result: "🌗", name: "Parallel Universe" },
+        "☀️+🪨": { result: "🪐", name: "Planet" },
+        "🪐+🌊": { result: "🔱", name: "Atlantis" },
+        "🪐+🏠": { result: "🌑", name: "Moon Base" },
+        "🚀+👨": { result: "👨‍🚀", name: "Astronaut" },
+
+        // --- TIER 31-36: QUANTUM PHYSICS (15) ---
+        "🔬+🧪": { result: "⚛️", name: "Atom" },
+        "⚛️+⚡": { result: "💥", name: "Nuclear Power" },
+        "⚛️+⚛️": { result: "🌑", name: "Dark Matter" },
+        "🌑+💡": { result: "🔦", name: "Antimatter" },
+        "⌛+⚛️": { result: "🕰️", name: "Quantum Time" },
+        "💻+⚛️": { result: "🧪", name: "Quantum PC" },
+        "🧪+🧠": { result: "🧬", name: "Telepathy" },
+        "🧬+⚡": { result: "⚡", name: "Superpower" },
+        "🌌+⚛️": { result: "🌀", name: "Singularity" },
+        "🌀+🌍": { result: "🌋", name: "World Ender" },
+        "💥+🚀": { result: "☄️", name: "Warp Drive" },
+        "🛰️+🌑": { result: "📡", name: "Deep Space" },
+        "👨‍🚀+🛸": { result: "👽", name: "Alien Contact" },
+        "👽+🧪": { result: "🧬", name: "Hybrid" },
+        "🧬+🤖": { result: "🧠", name: "Synthetic Life" },
+
+        // --- TIER 37-42: MAGIC & MYTH (15) ---
+        "🔮+💨": { result: "🧙", name: "Wizard" },
+        "🧙+🔥": { result: "🪄", name: "Magic Wand" },
+        "🪄+🐇": { result: "🎩", name: "Magic Trick" },
+        "🏰+🛡️": { result: "⚔️", name: "Knight" },
+        "⚔️+🐉": { result: "💎", name: "Dragon Hoard" },
+        "✨+💍": { result: "💍", name: "One Ring" },
+        "🧙+📖": { result: "📜", name: "Spellbook" },
+        "📜+⚡": { result: "⚡", name: "Lightning Bolt" },
+        "📜+💧": { result: "🌊", name: "Tsunami" },
+        "🧚+✨": { result: "🦄", name: "Unicorn" },
+        "🦄+🌈": { result: "🍭", name: "Candy Land" },
+        "🧙+🧪": { result: "🧪", name: "Potion" },
+        "🧪+🌙": { result: "🐺", name: "Werewolf" },
+        "🌙+☀️": { result: "🌗", name: "Eclipse" },
+        "🌗+🔮": { result: "🧿", name: "Prophecy" },
+
+        // --- TIER 43-50: DIVINITY & META (15) ---
+        "🌌+🧠": { result: "🔮", name: "Cosmic Mind" },
+        "🔮+🌟": { result: "✨", name: "Celestial Forge" },
+        "✨+🔨": { result: "👑", name: "God Mode" },
+        "👑+🕳️": { result: "🎆", name: "Big Bang" },
+        "🎆+⏳": { result: "♾️", name: "Infinity" },
+        "♾️+🌐": { result: "🎮", name: "The Simulation" },
+        "🎮+👁️": { result: "🛑", name: "The Glitch" },
+        "🛑+👑": { result: "✨", name: "Ascension" },
+        "🏙️+🪐": { result: "🏰", name: "Galactic Empire" },
+        "🏰+♾️": { result: "🌌", name: "Transcendence" },
+        "🧠+✨": { result: "👁️", name: "Enlightenment" },
+        "👁️+♾️": { result: "🕉️", name: "Nirvana" },
+        "🕉️+🌈": { result: "🌈", name: "Pure Light" },
+        "🌈+🛑": { result: "⚪", name: "The End" },
+        "⚪+👶": { result: "🔥", name: "Rebirth" }
+    };
+
+    let unlocked = [
+        { icon: "🔥", name: "Fire" },
+        { icon: "💧", name: "Water" },
+        { icon: "🌍", name: "Earth" },
+        { icon: "💨", name: "Air" },
+        { icon: "🧠", name: "Brain" },
+        { icon: "🔨", name: "Hammer" }
+    ];
+
+    const canvas = document.getElementById('star-canvas');
+    const ctx = canvas.getContext('2d');
+    const board = document.getElementById('board');
+    const inventory = document.getElementById('inventory');
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.onresize = resize; resize();
+
+    let stars = Array(100).fill().map(() => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*2+1, o: Math.random() }));
+    function animate() {
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        stars.forEach(s => {
+            ctx.fillStyle = `rgba(255,255,255,${s.o})`;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, 7); ctx.fill();
+            s.y += s.s * 0.5; if(s.y > canvas.height) s.y = -10;
+        });
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+   function updateUI() {
+    inventory.innerHTML = '';
+    unlocked.sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
+        const div = document.createElement('div');
+            div.className = 'emoji';
+            div.innerHTML = `${item.icon}<span class="emoji-label">${item.name}</span>`;
+            div.onclick = () => addItemToBoard(item.icon, item.name);
+            inventory.appendChild(div);
+    });
+    
+    // --- CHANGE THESE THREE LINES ---
+    const totalPossible = 126; 
+    document.getElementById('found-count').innerText = unlocked.length;
+    document.getElementById('total-count').innerText = totalPossible;
+    document.getElementById('progress-bar-inner').style.width = (unlocked.length / totalPossible * 100) + "%";
+    
+    localStorage.setItem('alchemy_save', JSON.stringify(unlocked));
+}
+
+    function addItemToBoard(icon, name) {
+        const el = document.createElement('div');
+        el.className = 'emoji on-board';
+        el.dataset.icon = icon;
+        el.innerHTML = `${icon}<span class="emoji-label">${name}</span>`;
+        el.style.left = "40%"; el.style.top = "30%";
+        board.appendChild(el);
+        attachDrag(el);
+    }
+
+    function attachDrag(el) {
+        let x = 0, y = 0, startX = 0, startY = 0;
+        const onStart = (e) => {
+            const touch = e.type === 'touchstart' ? e.touches[0] : e;
+            startX = touch.clientX - x;
+            startY = touch.clientY - y;
+            document.addEventListener(e.type === 'touchstart' ? 'touchmove' : 'mousemove', onMove, {passive: false});
+            document.addEventListener(e.type === 'touchstart' ? 'touchend' : 'mouseup', onEnd);
+        };
+        const onMove = (e) => {
+            e.preventDefault();
+            const touch = e.type === 'touchmove' ? e.touches[0] : e;
+            x = touch.clientX - startX;
+            y = touch.clientY - startY;
+            el.style.transform = `translate(${x}px, ${y}px)`;
+        };
+        const onEnd = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('touchmove', onMove);
+            checkCollision(el);
+        };
+        el.addEventListener('mousedown', onStart);
+        el.addEventListener('touchstart', onStart, {passive: false});
+    }
+
+    function checkCollision(el) {
+        const r1 = el.getBoundingClientRect();
+        document.querySelectorAll('.on-board').forEach(other => {
+            if (other === el) return;
+            const r2 = other.getBoundingClientRect();
+            if (!(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom)) {
+                const key1 = el.dataset.icon + "+" + other.dataset.icon;
+                const key2 = other.dataset.icon + "+" + el.dataset.icon;
+                const match = recipes[key1] || recipes[key2];
+                if (match) {
+                    addItemToBoard(match.result, match.name);
+                    if (!unlocked.find(u => u.icon === match.result)) {
+                        unlocked.push({icon: match.result, name: match.name});
+                        updateUI();
+                    }
+                    el.remove(); other.remove();
+                }
+            }
+        });
+    }
+
+    function clearBoard() { board.innerHTML = ''; }
+    function filterInventory() {
+        const val = document.getElementById('search').value.toLowerCase();
+        document.querySelectorAll('#inventory .emoji').forEach(e => {
+            e.style.display = e.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
+        });
+    }
+
+    const saved = localStorage.getItem('alchemy_save');
+    if(saved) unlocked = JSON.parse(saved);
+    updateUI();
+</script>
+
+</body>
+</html>
