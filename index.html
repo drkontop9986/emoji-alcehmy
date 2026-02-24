@@ -3,37 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Emoji Alchemy: Mega Edition</title>
+    <title>Emoji Alchemy: Tycoon Edition</title>
     <style>
-        :root { --bg: #050505; --accent: #00f2ff; --panel: rgba(20, 20, 20, 0.95); }
+        :root { --bg: #050505; --accent: #ffcc00; --panel: rgba(20, 20, 20, 0.95); }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        #star-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; }
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
         #header { z-index: 10; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
         #board { flex-grow: 1; position: relative; z-index: 5; overflow: hidden; touch-action: none; }
-        #inventory-container { z-index: 10; height: 35vh; background: var(--panel); border-top: 1px solid #444; display: flex; flex-direction: column; }
+        #inventory-container { z-index: 10; height: 30vh; background: var(--panel); border-top: 1px solid #444; display: flex; flex-direction: column; }
         #inventory { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; overflow-y: auto; justify-content: center; }
-        .emoji { font-size: 2.5rem; cursor: grab; display: flex; flex-direction: column; align-items: center; width: 70px; user-select: none; }
-        .emoji-label { font-size: 0.6rem; color: #888; margin-top: 4px; text-align: center; pointer-events: none; }
-        .on-board { position: absolute; z-index: 50; transition: transform 0.05s linear; }
-        #progress-bar { flex-grow: 1; height: 6px; background: #222; margin: 0 20px; border-radius: 3px; overflow: hidden; position: relative; }
-        #progress-bar-inner { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; box-shadow: 0 0 10px var(--accent); }
-        button { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 5px 15px; border-radius: 15px; cursor: pointer; font-size: 0.8rem; }
-        input { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; border-radius: 20px; width: 60%; margin: 10px auto; display: block; outline: none; }
+        .emoji { font-size: 2.5rem; cursor: grab; display: flex; flex-direction: column; align-items: center; width: 85px; user-select: none; position: relative; }
+        .emoji-label { font-size: 0.65rem; color: #888; margin-top: 4px; text-align: center; pointer-events: none; }
+        .on-board { position: absolute; z-index: 50; }
+        .lvl-badge { position: absolute; top: -5px; right: 5px; font-size: 0.7rem; background: #7000ff; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; color: white; }
+        .money-text { color: #44ff44; font-weight: bold; font-family: monospace; font-size: 1.1rem; }
+        #shop-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #151515; border: 2px solid var(--accent); padding: 20px; z-index: 100; border-radius: 15px; text-align: center; min-width: 250px; }
+        button { background: #222; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; border-radius: 20px; width: 80%; margin: 10px auto; display: block; outline: none; }
     </style>
 </head>
 <body>
 
 <canvas id="star-canvas"></canvas>
+<canvas id="yellow-star-canvas"></canvas>
 
 <div id="header">
-    <div style="min-width: 120px;">
-        <div style="font-size: 0.9rem; font-weight: bold; letter-spacing: 2px;">ALCHEMY</div>
-        <div id="stats" style="font-size: 0.7rem; color: #888;">
-            <span id="found-count">0</span> / <span id="total-count">126</span>
-        </div>
+    <div id="stats-bar">
+        <div class="money-text">$<span id="money-display">0</span></div>
+        <div style="font-size: 0.7rem; color: #888;">Rebirths: <span id="rebirth-display">0</span> | Found: <span id="found-count">0</span>/126</div>
     </div>
-    <div id="progress-bar"><div id="progress-bar-inner"></div></div>
-    <button onclick="clearBoard()">CLEAR</button>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="toggleShop()">🪙 REBIRTH</button>
+        <button onclick="clearBoard()">CLEAR</button>
+    </div>
 </div>
 
 <div id="board"></div>
@@ -43,226 +45,225 @@
     <div id="inventory"></div>
 </div>
 
+<div id="shop-modal">
+    <h3>Rebirth Shop</h3>
+    <p>Cost: $100,000</p>
+    <button onclick="attemptRebirth()">BUY REBIRTH</button>
+    <button onclick="toggleShop()" style="border-color: #ff4444; color: #ff4444; margin-top: 10px;">CLOSE</button>
+</div>
+
 <script>
- const recipes = {
-        // --- TIER 1-6: ELEMENTAL ORIGINS (15) ---
-        "🔥+🌍": { result: "🌋", name: "Volcano" },
-        "💧+🔥": { result: "💨", name: "Steam" },
-        "🌍+💧": { result: "💩", name: "Mud" },
-        "💨+🔥": { result: "⚡", name: "Energy" },
-        "💨+💧": { result: "🌧️", name: "Rain" },
-        "🌧️+🌍": { result: "🌱", name: "Plant" },
-        "🔥+🔥": { result: "☀️", name: "Sun" },
-        "🌍+🌍": { result: "🏔️", name: "Mountain" },
-        "💨+💨": { result: "🌬️", name: "Wind" },
-        "🌋+💧": { result: "🪨", name: "Stone" },
-        "🪨+🔥": { result: "⛓️", name: "Metal" },
-        "🪨+💨": { result: "🏖️", name: "Sand" },
-        "🏖️+🔥": { result: "🔮", name: "Glass" },
-        "🌱+☀️": { result: "🌻", name: "Flower" },
-        "🌱+💧": { result: "🌿", name: "Herb" },
+    let money = 0;
+    let rebirths = 0;
+    const REBIRTH_COST = 100000;
 
-        // --- TIER 7-12: INDUSTRIAL AGE (15) ---
-        "🌱+🌍": { result: "🌳", name: "Tree" },
-        "🌳+🔥": { result: "🪵", name: "Wood" },
-        "🪨+🪨": { result: "🧱", name: "Brick" },
-        "🧱+🧱": { result: "🏠", name: "House" },
-        "🏠+🏠": { result: "🏘️", name: "Village" },
-        "🏘️+🏘️": { result: "🏙️", name: "City" },
-        "⛓️+🪵": { result: "🔨", name: "Hammer" },
-        "⚡+🔮": { result: "💡", name: "Lightbulb" },
-        "⛓️+⚡": { result: "🔋", name: "Battery" },
-        "🪵+🪨": { result: "📏", name: "Ruler" },
-        "🌱+🌧️": { result: "📄", name: "Paper" },
-        "🪨+🔨": { result: "✍️", name: "Writing" },
-        "⛓️+⛓️": { result: "⚙️", name: "Gear" },
-        "⚙️+⚡": { result: "🚂", name: "Engine" },
-        "🚂+⛓️": { result: "🚜", name: "Machine" },
-
-        // --- TIER 13-18: BIOLOGY & LIFE (15) ---
-        "⚡+💧": { result: "🧪", name: "Life" },
-        "🧪+🌍": { result: "🐛", name: "Bug" },
-        "🧪+💧": { result: "🐟", name: "Fish" },
-        "🐛+🌱": { result: "🦋", name: "Butterfly" },
-        "🐟+🌍": { result: "🦎", name: "Reptile" },
-        "🦎+🔥": { result: "🐉", name: "Dragon" },
-        "🧪+🧠": { result: "🧬", name: "DNA" },
-        "🧬+🌍": { result: "🐒", name: "Monkey" },
-        "🐒+🧠": { result: "👨", name: "Human" },
-        "👨+🔨": { result: "👷", name: "Worker" },
-        "👨+✍️": { result: "🧑‍🏫", name: "Scholar" },
-        "👨+🧪": { result: "🧛", name: "Vampire" },
-        "👨+🦴": { result: "💀", name: "Skeleton" },
-        "💀+🧪": { result: "🧟", name: "Zombie" },
-        "👨+🎨": { result: "🖼️", name: "Art" },
-
-        // --- TIER 19-24: COMPUTER AGE (15) ---
-        "🔋+⚙️": { result: "📟", name: "Transistor" },
-        "📟+📟": { result: "💾", name: "Microchip" },
-        "💾+💡": { result: "🖥️", name: "Monitor" },
-        "🖥️+✍️": { result: "⌨️", name: "Keyboard" },
-        "🖥️+⌨️": { result: "💻", name: "Computer" },
-        "💻+⚡": { result: "🌐", name: "Internet" },
-        "🌐+🧠": { result: "🤖", name: "AI" },
-        "🤖+💻": { result: "🦾", name: "Cyborg" },
-        "💻+🎮": { result: "🕹️", name: "Joystick" },
-        "🕹️+💻": { result: "🎮", name: "Video Game" },
-        "🌐+👨": { result: "📧", name: "Email" },
-        "🌐+🖼️": { result: "📸", name: "Social Media" },
-        "💻+⛓️": { result: "⛏️", name: "Bitcoin" },
-        "🤖+⚙️": { result: "🏭", name: "Automation" },
-        "🤖+👨": { result: "🤝", name: "Future" },
-
-        // --- TIER 25-30: SPACE EXPLORATION (15) ---
-        "☀️+☀️": { result: "🌟", name: "Star" },
-        "🌟+🌟": { result: "🌌", name: "Galaxy" },
-        "🌟+🪨": { result: "🕳️", name: "Black Hole" },
-        "🕳️+🌍": { result: "⏳", name: "Time" },
-        "🚂+🚀": { result: "🚀", name: "Rocket" },
-        "🚀+🌍": { result: "🛰️", name: "Satellite" },
-        "🛰️+🌐": { result: "📡", name: "Comms" },
-        "🚀+☀️": { result: "☄️", name: "Comet" },
-        "🚀+⚡": { result: "🛸", name: "UFO" },
-        "🛸+⏳": { result: "⌛", name: "Wormhole" },
-        "⌛+🌌": { result: "🌗", name: "Parallel Universe" },
-        "☀️+🪨": { result: "🪐", name: "Planet" },
-        "🪐+🌊": { result: "🔱", name: "Atlantis" },
-        "🪐+🏠": { result: "🌑", name: "Moon Base" },
-        "🚀+👨": { result: "👨‍🚀", name: "Astronaut" },
-
-        // --- TIER 31-36: QUANTUM PHYSICS (15) ---
-        "🔬+🧪": { result: "⚛️", name: "Atom" },
-        "⚛️+⚡": { result: "💥", name: "Nuclear Power" },
-        "⚛️+⚛️": { result: "🌑", name: "Dark Matter" },
-        "🌑+💡": { result: "🔦", name: "Antimatter" },
-        "⌛+⚛️": { result: "🕰️", name: "Quantum Time" },
-        "💻+⚛️": { result: "🧪", name: "Quantum PC" },
-        "🧪+🧠": { result: "🧬", name: "Telepathy" },
-        "🧬+⚡": { result: "⚡", name: "Superpower" },
-        "🌌+⚛️": { result: "🌀", name: "Singularity" },
-        "🌀+🌍": { result: "🌋", name: "World Ender" },
-        "💥+🚀": { result: "☄️", name: "Warp Drive" },
-        "🛰️+🌑": { result: "📡", name: "Deep Space" },
-        "👨‍🚀+🛸": { result: "👽", name: "Alien Contact" },
-        "👽+🧪": { result: "🧬", name: "Hybrid" },
-        "🧬+🤖": { result: "🧠", name: "Synthetic Life" },
-
-        // --- TIER 37-42: MAGIC & MYTH (15) ---
-        "🔮+💨": { result: "🧙", name: "Wizard" },
-        "🧙+🔥": { result: "🪄", name: "Magic Wand" },
-        "🪄+🐇": { result: "🎩", name: "Magic Trick" },
-        "🏰+🛡️": { result: "⚔️", name: "Knight" },
-        "⚔️+🐉": { result: "💎", name: "Dragon Hoard" },
-        "✨+💍": { result: "💍", name: "One Ring" },
-        "🧙+📖": { result: "📜", name: "Spellbook" },
-        "📜+⚡": { result: "⚡", name: "Lightning Bolt" },
-        "📜+💧": { result: "🌊", name: "Tsunami" },
-        "🧚+✨": { result: "🦄", name: "Unicorn" },
-        "🦄+🌈": { result: "🍭", name: "Candy Land" },
-        "🧙+🧪": { result: "🧪", name: "Potion" },
-        "🧪+🌙": { result: "🐺", name: "Werewolf" },
-        "🌙+☀️": { result: "🌗", name: "Eclipse" },
-        "🌗+🔮": { result: "🧿", name: "Prophecy" },
-
-        // --- TIER 43-50: DIVINITY & META (15) ---
-        "🌌+🧠": { result: "🔮", name: "Cosmic Mind" },
-        "🔮+🌟": { result: "✨", name: "Celestial Forge" },
-        "✨+🔨": { result: "👑", name: "God Mode" },
-        "👑+🕳️": { result: "🎆", name: "Big Bang" },
-        "🎆+⏳": { result: "♾️", name: "Infinity" },
-        "♾️+🌐": { result: "🎮", name: "The Simulation" },
-        "🎮+👁️": { result: "🛑", name: "The Glitch" },
-        "🛑+👑": { result: "✨", name: "Ascension" },
-        "🏙️+🪐": { result: "🏰", name: "Galactic Empire" },
-        "🏰+♾️": { result: "🌌", name: "Transcendence" },
-        "🧠+✨": { result: "👁️", name: "Enlightenment" },
-        "👁️+♾️": { result: "🕉️", name: "Nirvana" },
-        "🕉️+🌈": { result: "🌈", name: "Pure Light" },
-        "🌈+🛑": { result: "⚪", name: "The End" },
-        "⚪+👶": { result: "🔥", name: "Rebirth" }
+    // Levels added to recipes for income logic
+    const recipes = {
+      "🔥+🌍": { result: "🌋", name: "Volcano", lvl: 2 },
+        "💧+🔥": { result: "💨", name: "Steam", lvl: 2 },
+        "🌍+💧": { result: "💩", name: "Mud", lvl: 2 },
+        "💨+🔥": { result: "⚡", name: "Energy", lvl: 2 },
+        "💨+💧": { result: "🌧️", name: "Rain", lvl: 2 },
+        "🌧️+🌍": { result: "🌱", name: "Plant", lvl: 2 },
+        "🔥+🔥": { result: "☀️", name: "Sun", lvl: 2 },
+        "🌍+🌍": { result: "🏔️", name: "Mountain", lvl: 2 },
+        "💨+💨": { result: "🌬️", name: "Wind", lvl: 2 },
+        "🌋+💧": { result: "🪨", name: "Stone", lvl: 3 },
+        "🪨+🔥": { result: "⛓️", name: "Metal", lvl: 3 },
+        "🪨+💨": { result: "🏖️", name: "Sand", lvl: 3 },
+        "🏖️+🔥": { result: "🔮", name: "Glass", lvl: 3 },
+        "🌱+☀️": { result: "🌻", name: "Flower", lvl: 3 },
+        "🌱+💧": { result: "🌿", name: "Herb", lvl: 3 },
+        "🌱+🌍": { result: "🌳", name: "Tree", lvl: 2 },
+        "🌳+🔥": { result: "🪵", name: "Wood", lvl: 3 },
+        "🪨+🪨": { result: "🧱", name: "Brick", lvl: 3 },
+        "🧱+🧱": { result: "🏠", name: "House", lvl: 4 },
+        "🏠+🏠": { result: "🏘️", name: "Village", lvl: 5 },
+        "🏘️+🏘️": { result: "🏙️", name: "City", lvl: 6 },
+        "⛓️+🪵": { result: "🔨", name: "Hammer", lvl: 4 },
+        "⚡+🔮": { result: "💡", name: "Lightbulb", lvl: 4 },
+        "⛓️+⚡": { result: "🔋", name: "Battery", lvl: 4 },
+        "🌱+🌧️": { result: "📄", name: "Paper", lvl: 3 },
+        "🪨+🔨": { result: "✍️", name: "Writing", lvl: 5 },
+        "⛓️+⛓️": { result: "⚙️", name: "Gear", lvl: 4 },
+        "⚙️+⚡": { result: "🚂", name: "Engine", lvl: 5 },
+        "🚂+⛓️": { result: "🚜", name: "Machine", lvl: 6 },
+        "👨+📱": { result: "🤳", name: "Selfie", lvl: 4 },
+        "💻+🌐": { result: "🕸️", name: "Dark Web", lvl: 6 },
+        "🤖+🎨": { result: "🖼️", name: "AI Art", lvl: 6 },
+        "🧪+🌿": { result: "💊", name: "Medicine", lvl: 5 },
+        "💀+⚔️": { result: "☠️", name: "Pirate", lvl: 5 },
+        "👽+🏙️": { result: "🛸", name: "Invasion", lvl: 7 },
+        "🌳+⚙️": { result: "🚜", name: "Sawmill", lvl: 5 },
+        "🧟+👨": { result: "🧟‍♂️", name: "Outbreak", lvl: 6 },
+        "🧱+💧": { result: "🏰", name: "Moat", lvl: 5 },
+        "🚀+🌌": { result: "🔭", name: "Telescope", lvl: 6 },
+        "🐒+🧪": { result: "🦍", name: "Great Ape", lvl: 5 },
+        "🐚+🏖️": { result: "🐚", name: "Shell", lvl: 4 },
+        "📄+✍️": { result: "📖", name: "Book", lvl: 6 },
+        "📖+🧙": { result: "📜", name: "Spell", lvl: 7 },
+        "🧠+💻": { result: "💾", name: "Data", lvl: 6 },
+        "🔥+🌪️": { result: "🧨", name: "Dynamite", lvl: 5 },
+        "🧱+🪵": { result: "🛖", name: "Cabin", lvl: 4 },
+        "🔋+💧": { result: "💥", name: "Short Circuit", lvl: 5 },
+        "🦋+🌈": { result: "🧚", name: "Fairy", lvl: 6 },
+        "🐉+🏔️": { result: "🏰", name: "Lair", lvl: 6 },
+        "⚡+☁️": { result: "🌩️", name: "Thunderstorm", lvl: 4 },
+        "👨+🦴": { result: "🦴", name: "Anatomy", lvl: 4 },
+        "🌱+💩": { result: "🌻", name: "Fertilizer", lvl: 3 },
+        "💡+🌈": { result: "🏮", name: "Neon", lvl: 5 },
+        "🛸+🐮": { result: "🥛", name: "Abduction", lvl: 6 },
+        "⚡+💧": { result: "🧪", name: "Life", lvl: 4 },
+        "🧪+🌍": { result: "🐛", name: "Bug", lvl: 5 },
+        "🧪+💧": { result: "🐟", name: "Fish", lvl: 5 },
+        "🐛+🌱": { result: "🦋", name: "Butterfly", lvl: 6 },
+        "🐟+🌍": { result: "🦎", name: "Reptile", lvl: 6 },
+        "🦎+🔥": { result: "🐉", name: "Dragon", lvl: 7 },
+        "🧪+🧠": { result: "🧬", name: "DNA", lvl: 6 },
+        "🧬+🌍": { result: "🐒", name: "Monkey", lvl: 7 },
+        "🐒+🧠": { result: "👨", name: "Human", lvl: 8 },
+        "👨+🔨": { result: "👷", name: "Worker", lvl: 9 },
+        "👨+✍️": { result: "🧑‍🏫", name: "Scholar", lvl: 9 },
+        "👨+🧪": { result: "🧛", name: "Vampire", lvl: 9 },
+        "👨+🦴": { result: "💀", name: "Skeleton", lvl: 9 },
+        "💀+🧪": { result: "🧟", name: "Zombie", lvl: 10 },
+        "👨+🎨": { result: "🖼️", name: "Art", lvl: 9 },
+        "🔋+⚙️": { result: "📟", name: "Transistor", lvl: 5 },
+        "📟+📟": { result: "💾", name: "Microchip", lvl: 6 },
+        "💾+💡": { result: "🖥️", name: "Monitor", lvl: 7 },
+        "🖥️+✍️": { result: "⌨️", name: "Keyboard", lvl: 8 },
+        "🖥️+⌨️": { result: "💻", name: "Computer", lvl: 9 },
+        "💻+⚡": { result: "🌐", name: "Internet", lvl: 10 },
+        "🌐+🧠": { result: "🤖", name: "AI", lvl: 11 },
+        "🤖+💻": { result: "🦾", name: "Cyborg", lvl: 12 },
+        "💻+🎮": { result: "🕹️", name: "Joystick", lvl: 10 },
+        "🕹️+💻": { result: "🎮", name: "Video Game", lvl: 11 },
+        "🌐+👨": { result: "📧", name: "Email", lvl: 11 },
+        "🌐+🖼️": { result: "📸", name: "Social Media", lvl: 11 },
+        "💻+⛓️": { result: "⛏️", name: "Bitcoin", lvl: 10 },
+        "🤖+⚙️": { result: "🏭", name: "Automation", lvl: 12 },
+        "🤖+👨": { result: "🤝", name: "Future", lvl: 13 },
+        "☀️+☀️": { result: "🌟", name: "Star", lvl: 3 },
+        "🌟+🌟": { result: "🌌", name: "Galaxy", lvl: 4 },
+        "🌟+🪨": { result: "🕳️", name: "Black Hole", lvl: 4 },
+        "🕳️+🌍": { result: "⏳", name: "Time", lvl: 5 },
+        "🚂+🚀": { result: "🚀", name: "Rocket", lvl: 6 },
+        "🚀+🌍": { result: "🛰️", name: "Satellite", lvl: 7 },
+        "🛰️+🌐": { result: "📡", name: "Comms", lvl: 8 },
+        "🚀+☀️": { result: "☄️", name: "Comet", lvl: 7 },
+        "🚀+⚡": { result: "🛸", name: "UFO", lvl: 8 },
+        "🛸+⏳": { result: "⌛", name: "Wormhole", lvl: 9 },
+        "⌛+🌌": { result: "🌗", name: "Parallel Universe", lvl: 10 },
+        "☀️+🪨": { result: "🪐", name: "Planet", lvl: 4 },
+        "🪐+🌊": { result: "🔱", name: "Atlantis", lvl: 5 },
+        "🪐+🏠": { result: "🌑", name: "Moon Base", lvl: 5 },
+        "🚀+👨": { result: "👨‍🚀", name: "Astronaut", lvl: 9 },
+        "🔬+🧪": { result: "⚛️", name: "Atom", lvl: 6 },
+        "⚛️+⚡": { result: "💥", name: "Nuclear Power", lvl: 7 },
+        "⚛️+⚛️": { result: "🌑", name: "Dark Matter", lvl: 8 },
+        "🌑+💡": { result: "🔦", name: "Antimatter", lvl: 9 },
+        "⌛+⚛️": { result: "🕰️", name: "Quantum Time", lvl: 10 },
+        "💻+⚛️": { result: "🧪", name: "Quantum PC", lvl: 11 },
+        "🧪+🧠": { result: "🧬", name: "Telepathy", lvl: 12 },
+        "🧬+⚡": { result: "⚡", name: "Superpower", lvl: 13 },
+        "🌌+⚛️": { result: "🌀", name: "Singularity", lvl: 14 },
+        "🌀+🌍": { result: "🌋", name: "World Ender", lvl: 15 },
+        "💥+🚀": { result: "☄️", name: "Warp Drive", lvl: 14 },
+        "🛰️+🌑": { result: "📡", name: "Deep Space", lvl: 15 },
+        "👨‍🚀+🛸": { result: "👽", name: "Alien Contact", lvl: 15 },
+        "👽+🧪": { result: "🧬", name: "Hybrid", lvl: 16 },
+        "🧬+🤖": { result: "🧠", name: "Synthetic Life", lvl: 17 },
+        "🔮+💨": { result: "🧙", name: "Wizard", lvl: 7 },
+        "🧙+🔥": { result: "🪄", name: "Magic Wand", lvl: 8 },
+        "🪄+🐇": { result: "🎩", name: "Magic Trick", lvl: 9 },
+        "🏰+🛡️": { result: "⚔️", name: "Knight", lvl: 10 },
+        "⚔️+🐉": { result: "💎", name: "Dragon Hoard", lvl: 11 },
+        "✨+💍": { result: "💍", name: "One Ring", lvl: 12 },
+        "🧙+📖": { result: "📜", name: "Spellbook", lvl: 13 },
+        "📜+⚡": { result: "⚡", name: "Lightning Bolt", lvl: 14 },
+        "📜+💧": { result: "🌊", name: "Tsunami", lvl: 14 },
+        "🧚+✨": { result: "🦄", name: "Unicorn", lvl: 15 },
+        "🦄+🌈": { result: "🍭", name: "Candy Land", lvl: 16 },
+        "🧙+🧪": { result: "🧪", name: "Potion", lvl: 17 },
+        "🧪+🌙": { result: "🐺", name: "Werewolf", lvl: 18 },
+        "🌙+☀️": { result: "🌗", name: "Eclipse", lvl: 19 },
+        "🌗+🔮": { result: "🧿", name: "Prophecy", lvl: 20 },
+        "🌌+🧠": { result: "🔮", name: "Cosmic Mind", lvl: 21 },
+        "🔮+🌟": { result: "✨", name: "Celestial Forge", lvl: 22 },
+        "✨+🔨": { result: "👑", name: "God Mode", lvl: 23 },
+        "👑+🕳️": { result: "🎆", name: "Big Bang", lvl: 24 },
+        "🎆+⏳": { result: "♾️", name: "Infinity", lvl: 25 },
+        "♾️+🌐": { result: "🎮", name: "The Simulation", lvl: 26 },
+        "🎮+👁️": { result: "🛑", name: "The Glitch", lvl: 27 },
+        "🛑+👑": { result: "✨", name: "Ascension", lvl: 28 },
+        "🏙️+🪐": { result: "🏰", name: "Galactic Empire", lvl: 29 },
+        "🏰+♾️": { result: "🌌", name: "Transcendence", lvl: 30 },
+        "🧠+✨": { result: "👁️", name: "Enlightenment", lvl: 31 },
+        "👁️+♾️": { result: "🕉️", name: "Nirvana", lvl: 32 },
+        "🕉️+🌈": { result: "🌈", name: "Pure Light", lvl: 33 },
+        "🌈+🛑": { result: "⚪", name: "The End", lvl: 34 },
+        "⚪+👶": { result: "🔥", name: "Rebirth", lvl: 1 }
+        // ... (Remaining recipes from index (16).html go here with assigned lvls)
     };
 
     let unlocked = [
-        { icon: "🔥", name: "Fire" },
-        { icon: "💧", name: "Water" },
-        { icon: "🌍", name: "Earth" },
-        { icon: "💨", name: "Air" },
-        { icon: "🧠", name: "Brain" },
-        { icon: "🔨", name: "Hammer" }
+        { icon: "🔥", name: "Fire", lvl: 1 }, { icon: "💧", name: "Water", lvl: 1 },
+        { icon: "🌍", name: "Earth", lvl: 1 }, { icon: "💨", name: "Air", lvl: 1 },
     ];
 
-    const canvas = document.getElementById('star-canvas');
-    const ctx = canvas.getContext('2d');
-    const board = document.getElementById('board');
-    const inventory = document.getElementById('inventory');
+    // Particles and Animation
+    const bgCanvas = document.getElementById('star-canvas');
+    const starCanvas = document.getElementById('yellow-star-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const starCtx = starCanvas.getContext('2d');
+    let bgStars = [], fallingStars = [];
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.onresize = resize; resize();
+    function initParticles() {
+        bgCanvas.width = starCanvas.width = window.innerWidth;
+        bgCanvas.height = starCanvas.height = window.innerHeight;
+        bgStars = Array(100).fill().map(() => ({ x: Math.random()*bgCanvas.width, y: Math.random()*bgCanvas.height, s: Math.random()*2, o: Math.random() }));
+        fallingStars = Array(20).fill().map(() => ({ x: Math.random()*starCanvas.width, y: Math.random()*-starCanvas.height, s: Math.random()*3+2, spd: Math.random()*2+1 }));
+    }
 
-    let stars = Array(100).fill().map(() => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*2+1, o: Math.random() }));
     function animate() {
-        ctx.clearRect(0,0,canvas.width, canvas.height);
-        stars.forEach(s => {
-            ctx.fillStyle = `rgba(255,255,255,${s.o})`;
-            ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, 7); ctx.fill();
-            s.y += s.s * 0.5; if(s.y > canvas.height) s.y = -10;
+        bgCtx.clearRect(0,0,bgCanvas.width, bgCanvas.height);
+        starCtx.clearRect(0,0,starCanvas.width, starCanvas.height);
+        bgCtx.fillStyle = "white";
+        bgStars.forEach(s => { bgCtx.globalAlpha = s.o; bgCtx.beginPath(); bgCtx.arc(s.x, s.y, s.s, 0, 7); bgCtx.fill(); });
+        starCtx.fillStyle = "#ffcc00";
+        fallingStars.forEach(s => {
+            starCtx.beginPath(); starCtx.arc(s.x, s.y, s.s, 0, 7); starCtx.fill();
+            s.y += s.spd; if(s.y > starCanvas.height) { s.y = -20; s.x = Math.random()*starCanvas.width; }
         });
         requestAnimationFrame(animate);
     }
-    animate();
 
-   function updateUI() {
-    inventory.innerHTML = '';
-    unlocked.sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
-        const div = document.createElement('div');
-            div.className = 'emoji';
-            div.innerHTML = `${item.icon}<span class="emoji-label">${item.name}</span>`;
-            div.onclick = () => addItemToBoard(item.icon, item.name);
-            inventory.appendChild(div);
-    });
-    
-    // --- CHANGE THESE THREE LINES ---
-    const totalPossible = 126; 
-    document.getElementById('found-count').innerText = unlocked.length;
-    document.getElementById('total-count').innerText = totalPossible;
-    document.getElementById('progress-bar-inner').style.width = (unlocked.length / totalPossible * 100) + "%";
-    
-    localStorage.setItem('alchemy_save', JSON.stringify(unlocked));
-}
+    // Money generation logic
+    function processIncome() {
+        let totalGain = 0;
+        document.querySelectorAll('.on-board').forEach(el => {
+            const lvl = parseInt(el.dataset.lvl) || 1;
+            let gain = 0;
+            if (lvl === 2) gain = Math.random() * 19 + 1;
+            else if (lvl === 3) gain = Math.random() * 30 + 20;
+            else if (lvl === 4) gain = Math.random() * 150 + 50;
+            else if (lvl === 5) gain = Math.random() * 300 + 200;
+            else if (lvl >= 6) gain = Math.random() * 1000 + 1000;
+            totalGain += gain;
+        });
+        money += totalGain * (1 + rebirths);
+        document.getElementById('money-display').innerText = Math.floor(money).toLocaleString();
+    }
 
-    function addItemToBoard(icon, name) {
+    function addItemToBoard(icon, name, lvl) {
         const el = document.createElement('div');
         el.className = 'emoji on-board';
         el.dataset.icon = icon;
-        el.innerHTML = `${icon}<span class="emoji-label">${name}</span>`;
-        el.style.left = "40%"; el.style.top = "30%";
-        board.appendChild(el);
+        el.dataset.lvl = lvl;
+        el.innerHTML = `${icon}${lvl > 1 ? `<span class="lvl-badge">${lvl}</span>` : ''}<span class="emoji-label">${name}</span>`;
+        el.style.left = "45%"; el.style.top = "40%";
+        document.getElementById('board').appendChild(el);
         attachDrag(el);
-    }
-
-    function attachDrag(el) {
-        let x = 0, y = 0, startX = 0, startY = 0;
-        const onStart = (e) => {
-            const touch = e.type === 'touchstart' ? e.touches[0] : e;
-            startX = touch.clientX - x;
-            startY = touch.clientY - y;
-            document.addEventListener(e.type === 'touchstart' ? 'touchmove' : 'mousemove', onMove, {passive: false});
-            document.addEventListener(e.type === 'touchstart' ? 'touchend' : 'mouseup', onEnd);
-        };
-        const onMove = (e) => {
-            e.preventDefault();
-            const touch = e.type === 'touchmove' ? e.touches[0] : e;
-            x = touch.clientX - startX;
-            y = touch.clientY - startY;
-            el.style.transform = `translate(${x}px, ${y}px)`;
-        };
-        const onEnd = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('touchmove', onMove);
-            checkCollision(el);
-        };
-        el.addEventListener('mousedown', onStart);
-        el.addEventListener('touchstart', onStart, {passive: false});
     }
 
     function checkCollision(el) {
@@ -275,9 +276,9 @@
                 const key2 = other.dataset.icon + "+" + el.dataset.icon;
                 const match = recipes[key1] || recipes[key2];
                 if (match) {
-                    addItemToBoard(match.result, match.name);
+                    addItemToBoard(match.result, match.name, match.lvl || 1);
                     if (!unlocked.find(u => u.icon === match.result)) {
-                        unlocked.push({icon: match.result, name: match.name});
+                        unlocked.push({icon: match.result, name: match.name, lvl: match.lvl || 1});
                         updateUI();
                     }
                     el.remove(); other.remove();
@@ -286,7 +287,56 @@
         });
     }
 
-    function clearBoard() { board.innerHTML = ''; }
+    function attachDrag(el) {
+        let x = 0, y = 0, startX = 0, startY = 0;
+        const onStart = (e) => {
+            const touch = e.type === 'touchstart' ? e.touches[0] : e;
+            startX = touch.clientX - x; startY = touch.clientY - y;
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onEnd);
+            document.addEventListener('touchmove', onMove, {passive: false});
+            document.addEventListener('touchend', onEnd);
+        };
+        const onMove = (e) => {
+            const touch = e.type === 'touchmove' ? e.touches[0] : e;
+            x = touch.clientX - startX; y = touch.clientY - startY;
+            el.style.transform = `translate(${x}px, ${y}px)`;
+        };
+        const onEnd = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onEnd);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onEnd);
+            checkCollision(el);
+        };
+        el.addEventListener('mousedown', onStart);
+        el.addEventListener('touchstart', onStart, {passive: false});
+    }
+
+    function updateUI() {
+        const inv = document.getElementById('inventory');
+        inv.innerHTML = '';
+        unlocked.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'emoji';
+            div.innerHTML = `${item.icon}<span class="emoji-label">${item.name}</span>`;
+            div.onclick = () => addItemToBoard(item.icon, item.name, item.lvl || 1);
+            inv.appendChild(div);
+        });
+        document.getElementById('found-count').innerText = unlocked.length;
+    }
+
+    function attemptRebirth() {
+        if (money >= REBIRTH_COST) { money = 0; rebirths++; clearBoard(); toggleShop(); }
+        else { alert("Need $100,000!"); }
+    }
+
+    function toggleShop() {
+        const modal = document.getElementById('shop-modal');
+        modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function clearBoard() { document.getElementById('board').innerHTML = ''; }
     function filterInventory() {
         const val = document.getElementById('search').value.toLowerCase();
         document.querySelectorAll('#inventory .emoji').forEach(e => {
@@ -294,10 +344,8 @@
         });
     }
 
-    const saved = localStorage.getItem('alchemy_save');
-    if(saved) unlocked = JSON.parse(saved);
-    updateUI();
+    window.addEventListener('resize', initParticles);
+    initParticles(); animate(); updateUI(); setInterval(processIncome, 1000);
 </script>
-
 </body>
 </html>
