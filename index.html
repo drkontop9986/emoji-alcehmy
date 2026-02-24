@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Emoji Alchemy</title>
+    <title>Emoji Alchemy: Tycoon Edition</title>
     <style>
         :root { --bg: #050505; --accent: #ffcc00; --panel: rgba(20, 20, 20, 0.95); }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
@@ -18,7 +18,7 @@
         .lvl-badge { position: absolute; top: -5px; right: 5px; font-size: 0.7rem; background: #7000ff; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; color: white; }
         .money-text { color: #44ff44; font-weight: bold; font-family: monospace; font-size: 1.1rem; }
         #shop-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #151515; border: 2px solid var(--accent); padding: 20px; z-index: 100; border-radius: 15px; text-align: center; min-width: 250px; }
-        button { background: #222; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        button { background: #222; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; border-radius: 15px; cursor: pointer; font-weight: bold; margin: 2px; }
         input { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; border-radius: 20px; width: 80%; margin: 10px auto; display: block; outline: none; }
     </style>
 </head>
@@ -30,9 +30,10 @@
 <div id="header">
     <div id="stats-bar">
         <div class="money-text">$<span id="money-display">0</span></div>
-        <div style="font-size: 0.7rem; color: #888;">Rebirths: <span id="rebirth-display">0</span> | Found: <span id="found-count">0</span>/206</div>
+        <div style="font-size: 0.7rem; color: #888;">Rebirths: <span id="rebirth-display">0</span> | Found: <span id="found-count">0</span>/126</div>
     </div>
-    <div style="display: flex; gap: 10px;">
+    <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+        <button onclick="massMerge()" style="background: #7000ff; color: white; border: none;">✨ MERGE ALL</button>
         <button onclick="toggleShop()">🪙 REBIRTH</button>
         <button onclick="clearBoard()">CLEAR</button>
     </div>
@@ -57,9 +58,8 @@
     let rebirths = 0;
     const REBIRTH_COST = 100000;
 
-    // Levels added to recipes for income logic
-   const recipes = {
-    // --- TIER 1-6: ELEMENTAL ORIGINS ---
+    const recipes = {
+    // --- ORIGINAL RECIPES ---
     "🔥+🌍": { result: "🌋", name: "Volcano", lvl: 2 },
     "💧+🔥": { result: "💨", name: "Steam", lvl: 2 },
     "🌍+💧": { result: "💩", name: "Mud", lvl: 2 },
@@ -75,8 +75,6 @@
     "🏖️+🔥": { result: "🔮", name: "Glass", lvl: 3 },
     "🌱+☀️": { result: "🌻", name: "Flower", lvl: 3 },
     "🌱+💧": { result: "🌿", name: "Herb", lvl: 3 },
-
-    // --- TIER 7-12: INDUSTRIAL AGE ---
     "🌱+🌍": { result: "🌳", name: "Tree", lvl: 2 },
     "🌳+🔥": { result: "🪵", name: "Wood", lvl: 3 },
     "🪨+🪨": { result: "🧱", name: "Brick", lvl: 3 },
@@ -92,8 +90,6 @@
     "⛓️+⛓️": { result: "⚙️", name: "Gear", lvl: 4 },
     "⚙️+⚡": { result: "🚂", name: "Engine", lvl: 5 },
     "🚂+⛓️": { result: "🚜", name: "Machine", lvl: 6 },
-
-    // --- TIER 13-18: BIOLOGY & LIFE ---
     "⚡+💧": { result: "🧪", name: "Life", lvl: 4 },
     "🧪+🌍": { result: "🐛", name: "Bug", lvl: 5 },
     "🧪+💧": { result: "🐟", name: "Fish", lvl: 5 },
@@ -109,8 +105,6 @@
     "👨+🦴": { result: "💀", name: "Skeleton", lvl: 9 },
     "💀+🧪": { result: "🧟", name: "Zombie", lvl: 10 },
     "👨+🎨": { result: "🖼️", name: "Art", lvl: 9 },
-
-    // --- TIER 19-24: COMPUTER AGE ---
     "🔋+⚙️": { result: "📟", name: "Transistor", lvl: 5 },
     "📟+📟": { result: "💾", name: "Microchip", lvl: 6 },
     "💾+💡": { result: "🖥️", name: "Monitor", lvl: 7 },
@@ -126,8 +120,6 @@
     "💻+⛓️": { result: "⛏️", name: "Bitcoin", lvl: 10 },
     "🤖+⚙️": { result: "🏭", name: "Automation", lvl: 12 },
     "🤖+👨": { result: "🤝", name: "Future", lvl: 13 },
-
-    // --- TIER 25-30: SPACE EXPLORATION ---
     "☀️+☀️": { result: "🌟", name: "Star", lvl: 3 },
     "🌟+🌟": { result: "🌌", name: "Galaxy", lvl: 4 },
     "🌟+🪨": { result: "🕳️", name: "Black Hole", lvl: 4 },
@@ -143,8 +135,6 @@
     "🪐+🌊": { result: "🔱", name: "Atlantis", lvl: 5 },
     "🪐+🏠": { result: "🌑", name: "Moon Base", lvl: 5 },
     "🚀+👨": { result: "👨‍🚀", name: "Astronaut", lvl: 9 },
-
-    // --- TIER 31-36: QUANTUM PHYSICS ---
     "🔬+🧪": { result: "⚛️", name: "Atom", lvl: 6 },
     "⚛️+⚡": { result: "💥", name: "Nuclear Power", lvl: 7 },
     "⚛️+⚛️": { result: "🌑", name: "Dark Matter", lvl: 8 },
@@ -160,8 +150,6 @@
     "👨‍🚀+🛸": { result: "👽", name: "Alien Contact", lvl: 15 },
     "👽+🧪": { result: "🧬", name: "Hybrid", lvl: 16 },
     "🧬+🤖": { result: "🧠", name: "Synthetic Life", lvl: 17 },
-
-    // --- TIER 37-42: MAGIC & MYTH ---
     "🔮+💨": { result: "🧙", name: "Wizard", lvl: 7 },
     "🧙+🔥": { result: "🪄", name: "Magic Wand", lvl: 8 },
     "🪄+🐇": { result: "🎩", name: "Magic Trick", lvl: 9 },
@@ -177,8 +165,6 @@
     "🧪+🌙": { result: "🐺", name: "Werewolf", lvl: 18 },
     "🌙+☀️": { result: "🌗", name: "Eclipse", lvl: 19 },
     "🌗+🔮": { result: "🧿", name: "Prophecy", lvl: 20 },
-
-    // --- TIER 43-50: DIVINITY & META ---
     "🌌+🧠": { result: "🔮", name: "Cosmic Mind", lvl: 21 },
     "🔮+🌟": { result: "✨", name: "Celestial Forge", lvl: 22 },
     "✨+🔨": { result: "👑", name: "God Mode", lvl: 23 },
@@ -193,102 +179,104 @@
     "👁️+♾️": { result: "🕉️", name: "Nirvana", lvl: 32 },
     "🕉️+🌈": { result: "🌈", name: "Pure Light", lvl: 33 },
     "🌈+🛑": { result: "⚪", name: "The End", lvl: 34 },
-    "⚪+👶": { result: "🔥", name: "Rebirth", lvl: 1 }
-       // --- TIER: NATURE & ANIMALS (20) ---
-        "🌱+💩": { result: "🍄", name: "Mushroom", lvl: 2 },
-        "🌳+🐒": { result: "🍌", name: "Banana", lvl: 3 },
-        "💧+🐟": { result: "🦈", name: "Shark", lvl: 4 },
-        "🌍+🐛": { result: "🐍", name: "Snake", lvl: 3 },
-        "☀️+🦋": { result: "🐝", name: "Bee", lvl: 4 },
-        "🐝+🌻": { result: "🍯", name: "Honey", lvl: 5 },
-        "🌸+🌬️": { result: "💨", name: "Pollen", lvl: 2 },
-        "🏔️+🐐": { result: "🏔️", name: "Yeti", lvl: 6 },
-        "🦴+🐕": { result: "🐕", name: "Dog", lvl: 4 },
-        "🥛+🐱": { result: "🐱", name: "Cat", lvl: 4 },
-        "🌳+🌳": { result: "🌲", name: "Forest", lvl: 3 },
-        "🌲+🔥": { result: "💨", name: "Smoke", lvl: 2 },
-        "🌱+🐝": { result: "🌸", name: "Flower", lvl: 3 },
-        "🌊+🐚": { result: "🦀", name: "Crab", lvl: 4 },
-        "🐟+🐦": { result: "🐧", name: "Penguin", lvl: 5 },
-        "🐎+🌈": { result: "🦄", name: "Unicorn", lvl: 6 },
-        "🦁+🏜️": { result: "🦁", name: "Lion", lvl: 5 },
-        "🌳+🍎": { result: "🍎", name: "Apple", lvl: 3 },
-        "🥚+🔥": { result: "🐤", name: "Chick", lvl: 3 },
-        "🐤+⏳": { result: "🐔", name: "Chicken", lvl: 4 },
+    "⚪+👶": { result: "🔥", name: "Rebirth", lvl: 1 },
 
-        // --- TIER: FOOD & COOKING (20) ---
-        "🔥+🌾": { result: "Bread", name: "Bread", lvl: 2 },
-        "Bread+🧀": { result: "🍕", name: "Pizza", lvl: 4 },
-        "🐄+❄️": { result: "🍦", name: "Ice Cream", lvl: 3 },
-        "🔥+🥩": { result: "🍔", name: "Burger", lvl: 4 },
-        "🥔+🔥": { result: "🍟", name: "Fries", lvl: 3 },
-        "🍎+🥧": { result: "🥧", name: "Pie", lvl: 4 },
-        "☕+🧊": { result: "🥤", name: "Iced Coffee", lvl: 3 },
-        "🍇+⏳": { result: "🍷", name: "Wine", lvl: 5 },
-        "🌾+🍺": { result: "🍺", name: "Beer", lvl: 4 },
-        "🍪+🥛": { result: "🍪", name: "Cookie", lvl: 3 },
-        "🍞+🥩": { result: "🥪", name: "Sandwich", lvl: 4 },
-        "🍅+🥣": { result: "🍲", name: "Soup", lvl: 3 },
-        "🍚+🐟": { result: "🍣", name: "Sushi", lvl: 5 },
-        "🍫+🥛": { result: "🍫", name: "Chocolate", lvl: 3 },
-        "🍯+🍋": { result: "🍵", name: "Tea", lvl: 3 },
-        "🌽+🔥": { result: "🍿", name: "Popcorn", lvl: 3 },
-        "🥔+🔪": { result: "🥣", name: "Mashed Potato", lvl: 3 },
-        "🍓+🥛": { result: "🥤", name: "Smoothie", lvl: 4 },
-        "🍗+🔥": { result: "🍗", name: "Fried Chicken", lvl: 4 },
-        "🥚+🍞": { result: "🍳", name: "French Toast", lvl: 4 },
+    // --- NEW TIER: NATURE & ANIMALS (20) ---
+    "🌱+💩": { result: "🍄", name: "Mushroom", lvl: 2 },
+    "🌳+🐒": { result: "🍌", name: "Banana", lvl: 3 },
+    "💧+🐟": { result: "🦈", name: "Shark", lvl: 4 },
+    "🌍+🐛": { result: "🐍", name: "Snake", lvl: 3 },
+    "☀️+🦋": { result: "🐝", name: "Bee", lvl: 4 },
+    "🐝+🌻": { result: "🍯", name: "Honey", lvl: 5 },
+    "🌸+🌬️": { result: "💨", name: "Pollen", lvl: 2 },
+    "🏔️+🐐": { result: "🏔️", name: "Yeti", lvl: 6 },
+    "🦴+🐕": { result: "🐕", name: "Dog", lvl: 4 },
+    "🥛+🐱": { result: "🐱", name: "Cat", lvl: 4 },
+    "🌳+🌳": { result: "🌲", name: "Forest", lvl: 3 },
+    "🌲+🔥": { result: "💨", name: "Smoke", lvl: 2 },
+    "🌱+🐝": { result: "🌸", name: "Flower", lvl: 3 },
+    "🌊+🐚": { result: "🦀", name: "Crab", lvl: 4 },
+    "🐟+🐦": { result: "🐧", name: "Penguin", lvl: 5 },
+    "🐎+🌈": { result: "🦄", name: "Unicorn", lvl: 6 },
+    "🦁+🏜️": { result: "🦁", name: "Lion", lvl: 5 },
+    "🌳+🍎": { result: "🍎", name: "Apple", lvl: 3 },
+    "🥚+🔥": { result: "🐤", name: "Chick", lvl: 3 },
+    "🐤+⏳": { result: "🐔", name: "Chicken", lvl: 4 },
 
-        // --- TIER: ENTERTAINMENT & MUSIC (20) ---
-        "🪵+⛓️": { result: "🎸", name: "Guitar", lvl: 4 },
-        "🎸+⚡": { result: "🤘", name: "Rock", lvl: 5 },
-        "📄+🖊️": { result: "🎼", name: "Sheet Music", lvl: 3 },
-        "🎼+📻": { result: "🎵", name: "Melody", lvl: 4 },
-        "🎵+👨": { result: "🎤", name: "Singer", lvl: 6 },
-        "🎤+💻": { result: "🎧", name: "Podcast", lvl: 5 },
-        "📸+🎞️": { result: "🎬", name: "Movie", lvl: 5 },
-        "🎬+🍿": { result: "📽️", name: "Cinema", lvl: 6 },
-        "🎨+⚡": { result: "📺", name: "Television", lvl: 5 },
-        "📺+🌐": { result: "🎞️", name: "Streaming", lvl: 6 },
-        "📻+⚡": { result: "🎙️", name: "Radio Station", lvl: 5 },
-        "🎹+🎼": { result: "🎻", name: "Orchestra", lvl: 7 },
-        "🎮+🌐": { result: "🕹️", name: "Esports", lvl: 8 },
-        "🎬+👨": { result: "🤵", name: "Actor", lvl: 7 },
-        "🎭+🏛️": { result: "🎟️", name: "Theater", lvl: 6 },
-        "💃+🎵": { result: "🕺", name: "Party", lvl: 5 },
-        "🎤+🔥": { result: "🔥", name: "Rap Battle", lvl: 6 },
-        "🎨+🖌️": { result: "🖼️", name: "Masterpiece", lvl: 8 },
-        "📱+📸": { result: "🤳", name: "Influencer", lvl: 7 },
-        "🃏+🎩": { result: "🪄", name: "Magic Show", lvl: 6 },
+    // --- NEW TIER: FOOD & COOKING (20) ---
+    "🔥+🌾": { result: "Bread", name: "Bread", lvl: 2 },
+    "Bread+🧀": { result: "🍕", name: "Pizza", lvl: 4 },
+    "🐄+❄️": { result: "🍦", name: "Ice Cream", lvl: 3 },
+    "🔥+🥩": { result: "🍔", name: "Burger", lvl: 4 },
+    "🥔+🔥": { result: "🍟", name: "Fries", lvl: 3 },
+    "🍎+🥧": { result: "🥧", name: "Pie", lvl: 4 },
+    "☕+🧊": { result: "🥤", name: "Iced Coffee", lvl: 3 },
+    "🍇+⏳": { result: "🍷", name: "Wine", lvl: 5 },
+    "🌾+🍺": { result: "🍺", name: "Beer", lvl: 4 },
+    "🍪+🥛": { result: "🍪", name: "Cookie", lvl: 3 },
+    "🍞+🥩": { result: "🥪", name: "Sandwich", lvl: 4 },
+    "🍅+🥣": { result: "🍲", name: "Soup", lvl: 3 },
+    "🍚+🐟": { result: "🍣", name: "Sushi", lvl: 5 },
+    "🍫+🥛": { result: "🍫", name: "Chocolate", lvl: 3 },
+    "🍯+🍋": { result: "🍵", name: "Tea", lvl: 3 },
+    "🌽+🔥": { result: "🍿", name: "Popcorn", lvl: 3 },
+    "🥔+🔪": { result: "🥣", name: "Mashed Potato", lvl: 3 },
+    "🍓+🥛": { result: "🥤", name: "Smoothie", lvl: 4 },
+    "🍗+🔥": { result: "🍗", name: "Fried Chicken", lvl: 4 },
+    "🥚+🍞": { result: "🍳", name: "French Toast", lvl: 4 },
 
-        // --- TIER: MYTHOLOGY & LEGENDS (20) ---
-        "🐎+🪄": { result: "🦄", name: "Unicorn", lvl: 6 },
-        "🔥+🦅": { result: "Phoenix", name: "Phoenix", lvl: 8 },
-        "🔱+🌊": { result: "🧜‍♀️", name: "Mermaid", lvl: 7 },
-        "💀+🏹": { result: "🦴", name: "Skeleton Archer", lvl: 6 },
-        "🏔️+⚒️": { result: "🧔", name: "Dwarf", lvl: 6 },
-        "🌳+✨": { result: "🧝", name: "Elf", lvl: 6 },
-        "🌑+🧛": { result: "🦇", name: "Bat", lvl: 5 },
-        "🐺+🌕": { result: "Werewolf", name: "Werewolf", lvl: 7 },
-        "🐉+城堡": { result: "👑", name: "Kingdom", lvl: 9 },
-        "⚡+🔨": { result: "Thor", name: "Thor", lvl: 10 },
-        "🌊+🐉": { result: "🐍", name: "Kraken", lvl: 8 },
-        "🔥+🐉": { result: "🐲", name: "Ancient Dragon", lvl: 11 },
-        "🧙+📖": { result: "📜", name: "Ancient Spell", lvl: 9 },
-        "🏛️+🦁": { result: "🦁", name: "Sphinx", lvl: 8 },
-        "👼+⚔️": { result: "🏹", name: "Valkyrie", lvl: 10 },
-        "💀+🔥": { result: "👹", name: "Demon", lvl: 9 },
-        "✨+💧": { result: "⛲", name: "Fountain of Youth", lvl: 12 },
-        "🧔+⚡": { result: "⚡", name: "Zeus", lvl: 15 },
-        "🐍+👩": { result: "🐍", name: "Medusa", lvl: 9 },
-        "👑+🏛️": { result: "🏛️", name: "Olympus", lvl: 20 }
+    // --- NEW TIER: ENTERTAINMENT & MUSIC (20) ---
+    "🪵+⛓️": { result: "🎸", name: "Guitar", lvl: 4 },
+    "🎸+⚡": { result: "🤘", name: "Rock", lvl: 5 },
+    "📄+🖊️": { result: "🎼", name: "Sheet Music", lvl: 3 },
+    "🎼+📻": { result: "🎵", name: "Melody", lvl: 4 },
+    "🎵+👨": { result: "🎤", name: "Singer", lvl: 6 },
+    "🎤+💻": { result: "🎧", name: "Podcast", lvl: 5 },
+    "📸+🎞️": { result: "🎬", name: "Movie", lvl: 5 },
+    "🎬+🍿": { result: "📽️", name: "Cinema", lvl: 6 },
+    "🎨+⚡": { result: "📺", name: "Television", lvl: 5 },
+    "📺+🌐": { result: "🎞️", name: "Streaming", lvl: 6 },
+    "📻+⚡": { result: "🎙️", name: "Radio Station", lvl: 5 },
+    "🎹+🎼": { result: "🎻", name: "Orchestra", lvl: 7 },
+    "🎮+🌐": { result: "🕹️", name: "Esports", lvl: 8 },
+    "🎬+👨": { result: "🤵", name: "Actor", lvl: 7 },
+    "🎭+🏛️": { result: "🎟️", name: "Theater", lvl: 6 },
+    "💃+🎵": { result: "🕺", name: "Party", lvl: 5 },
+    "🎤+🔥": { result: "🔥", name: "Rap Battle", lvl: 6 },
+    "🎨+🖌️": { result: "🖼️", name: "Masterpiece", lvl: 8 },
+    "📱+📸": { result: "🤳", name: "Influencer", lvl: 7 },
+    "🃏+🎩": { result: "🪄", name: "Magic Show", lvl: 6 },
+
+    // --- NEW TIER: MYTHOLOGY & LEGENDS (20) ---
+    "🐎+🪄": { result: "🦄", name: "Unicorn", lvl: 6 },
+    "🔥+🦅": { result: "Phoenix", name: "Phoenix", lvl: 8 },
+    "🔱+🌊": { result: "🧜‍♀️", name: "Mermaid", lvl: 7 },
+    "💀+🏹": { result: "🦴", name: "Skeleton Archer", lvl: 6 },
+    "🏔️+⚒️": { result: "🧔", name: "Dwarf", lvl: 6 },
+    "🌳+✨": { result: "🧝", name: "Elf", lvl: 6 },
+    "🌑+🧛": { result: "🦇", name: "Bat", lvl: 5 },
+    "🐺+🌕": { result: "Werewolf", name: "Werewolf", lvl: 7 },
+    "🐉+城堡": { result: "👑", name: "Kingdom", lvl: 9 },
+    "⚡+🔨": { result: "Thor", name: "Thor", lvl: 10 },
+    "🌊+🐉": { result: "🐍", name: "Kraken", lvl: 8 },
+    "🔥+🐉": { result: "🐲", name: "Ancient Dragon", lvl: 11 },
+    "🧙+📖": { result: "📜", name: "Ancient Spell", lvl: 9 },
+    "🏛️+🦁": { result: "🦁", name: "Sphinx", lvl: 8 },
+    "👼+⚔️": { result: "🏹", name: "Valkyrie", lvl: 10 },
+    "💀+🔥": { result: "👹", name: "Demon", lvl: 9 },
+    "✨+💧": { result: "⛲", name: "Fountain of Youth", lvl: 12 },
+    "🧔+⚡": { result: "⚡", name: "Zeus", lvl: 15 },
+    "🐍+👩": { result: "🐍", name: "Medusa", lvl: 9 },
+    "👑+🏛️": { result: "🏛️", name: "Olympus", lvl: 20 }
 };
 
     let unlocked = [
         { icon: "🔥", name: "Fire", lvl: 1 }, { icon: "💧", name: "Water", lvl: 1 },
         { icon: "🌍", name: "Earth", lvl: 1 }, { icon: "💨", name: "Air", lvl: 1 },
+        { icon: "🧠", name: "Brain", lvl: 1 }, { icon: "🔨", name: "Hammer", lvl: 1 }
     ];
 
-    // Particles and Animation
+    // Particle Setup
     const bgCanvas = document.getElementById('star-canvas');
     const starCanvas = document.getElementById('yellow-star-canvas');
     const bgCtx = bgCanvas.getContext('2d');
@@ -315,7 +303,6 @@
         requestAnimationFrame(animate);
     }
 
-    // Money generation logic
     function processIncome() {
         let totalGain = 0;
         document.querySelectorAll('.on-board').forEach(el => {
@@ -332,36 +319,46 @@
         document.getElementById('money-display').innerText = Math.floor(money).toLocaleString();
     }
 
-    function addItemToBoard(icon, name, lvl) {
-        const el = document.createElement('div');
-        el.className = 'emoji on-board';
-        el.dataset.icon = icon;
-        el.dataset.lvl = lvl;
-        el.innerHTML = `${icon}${lvl > 1 ? `<span class="lvl-badge">${lvl}</span>` : ''}<span class="emoji-label">${name}</span>`;
-        el.style.left = "45%"; el.style.top = "40%";
-        document.getElementById('board').appendChild(el);
-        attachDrag(el);
-    }
+    function massMerge() {
+        const items = Array.from(document.querySelectorAll('.on-board'));
+        if (items.length < 2) return;
+        
+        let merged = false;
+        for (let i = 0; i < items.length; i++) {
+            for (let j = i + 1; j < items.length; j++) {
+                const a = items[i];
+                const b = items[j];
+                if (!a.parentElement || !b.parentElement) continue;
 
-    function checkCollision(el) {
-        const r1 = el.getBoundingClientRect();
-        document.querySelectorAll('.on-board').forEach(other => {
-            if (other === el) return;
-            const r2 = other.getBoundingClientRect();
-            if (!(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom)) {
-                const key1 = el.dataset.icon + "+" + other.dataset.icon;
-                const key2 = other.dataset.icon + "+" + el.dataset.icon;
+                const key1 = a.dataset.icon + "+" + b.dataset.icon;
+                const key2 = b.dataset.icon + "+" + a.dataset.icon;
                 const match = recipes[key1] || recipes[key2];
+
                 if (match) {
                     addItemToBoard(match.result, match.name, match.lvl || 1);
                     if (!unlocked.find(u => u.icon === match.result)) {
                         unlocked.push({icon: match.result, name: match.name, lvl: match.lvl || 1});
                         updateUI();
                     }
-                    el.remove(); other.remove();
+                    a.remove(); b.remove();
+                    merged = true;
+                    break;
                 }
             }
-        });
+        }
+        if (merged) massMerge(); // Recursively merge until no more pairs exist
+    }
+
+    function addItemToBoard(icon, name, lvl) {
+        const el = document.createElement('div');
+        el.className = 'emoji on-board';
+        el.dataset.icon = icon;
+        el.dataset.lvl = lvl;
+        el.innerHTML = `${icon}${lvl > 1 ? `<span class="lvl-badge">${lvl}</span>` : ''}<span class="emoji-label">${name}</span>`;
+        el.style.left = (20 + Math.random() * 50) + "%"; 
+        el.style.top = (20 + Math.random() * 40) + "%";
+        document.getElementById('board').appendChild(el);
+        attachDrag(el);
     }
 
     function attachDrag(el) {
@@ -390,10 +387,31 @@
         el.addEventListener('touchstart', onStart, {passive: false});
     }
 
+    function checkCollision(el) {
+        const r1 = el.getBoundingClientRect();
+        document.querySelectorAll('.on-board').forEach(other => {
+            if (other === el) return;
+            const r2 = other.getBoundingClientRect();
+            if (!(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom)) {
+                const key1 = el.dataset.icon + "+" + other.dataset.icon;
+                const key2 = other.dataset.icon + "+" + el.dataset.icon;
+                const match = recipes[key1] || recipes[key2];
+                if (match) {
+                    addItemToBoard(match.result, match.name, match.lvl || 1);
+                    if (!unlocked.find(u => u.icon === match.result)) {
+                        unlocked.push({icon: match.result, name: match.name, lvl: match.lvl || 1});
+                        updateUI();
+                    }
+                    el.remove(); other.remove();
+                }
+            }
+        });
+    }
+
     function updateUI() {
         const inv = document.getElementById('inventory');
         inv.innerHTML = '';
-        unlocked.forEach(item => {
+        unlocked.sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
             const div = document.createElement('div');
             div.className = 'emoji';
             div.innerHTML = `${item.icon}<span class="emoji-label">${item.name}</span>`;
