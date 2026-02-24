@@ -37,6 +37,7 @@
         <button onclick="massMerge()" style="background: #7000ff; color: white; border: none;">✨ MERGE ALL</button>
         <button onclick="toggleShop()">🪙 REBIRTH</button>
         <button onclick="clearBoard()">CLEAR</button>
+        <button onclick="fullReset()" style="border-color: #ff4444; color: #ff4444;">RESET GAME</button>
     </div>
 </div>
 
@@ -454,6 +455,34 @@
     animate(); 
     updateUI(); 
     setInterval(processIncome, 1000);
+
+        function fullReset() {
+    if (confirm("Are you sure? This will delete all your items and money!")) {
+        // Reset money and rebirths
+        money = 0;
+        rebirths = 0;
+
+        // Reset the unlocked list to ONLY the starting items
+        unlocked = [
+            { icon: "🔥", name: "Fire", lvl: 1 }, 
+            { icon: "💧", name: "Water", lvl: 1 },
+            { icon: "🌍", name: "Earth", lvl: 1 }, 
+            { icon: "💨", name: "Air", lvl: 1 },
+            { icon: "🧠", name: "Brain", lvl: 1 }, 
+            { icon: "🔨", name: "Hammer", lvl: 1 }
+        ];
+
+        // Clear everything off the board
+        clearBoard();
+
+        // Save the reset state to the browser
+        localStorage.setItem('alchemy_save', JSON.stringify(unlocked));
+        
+        // Refresh the screen
+        updateUI();
+        alert("Game Reset Successfully!");
+    }
+}
 </script>
 </body>
 </html>
